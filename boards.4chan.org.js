@@ -1,3 +1,7 @@
+/*
+ Xizaphir's AppChan X
+*/
+
 (function()
 {
     var defaultConfig =

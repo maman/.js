@@ -1,18 +1,8 @@
-// ==UserScript==
-// @run-at           document-start
-// @name             1. Greasemonkey Emulation
-// @description      It emulates the Greasemonkey GM_* functions.
-// @version          1.4.5
-// @author           ale5000
-// @namespace        http://userjs.ale5000.altervista.org/
-// @include          http://*
-// @include          https://*
-// @include          file://*
-// @filename         aab-greasemonkey-emulation.user.js
-// @filename-opera   aab-greasemonkey-emulation.js
-// @uniquescriptname greasemonkey_emulation
-// @license          GPL version 3 or any later version; http://www.gnu.org/copyleft/gpl.html
-// ==/UserScript==
+/*
+ Greasemonkey API Emulation
+ taken from http://userscripts.org/scripts/show/88932
+*/
+
 
 (function()
 {
