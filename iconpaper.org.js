@@ -1,0 +1,2 @@
+$('.adblock').remove()
+$('.blocktext').remove()
