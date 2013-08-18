@@ -1,5 +1,5 @@
 /*
- Xizaphir's AppChan X
+ Ahoka's 4Chan X
 */
 
 $('.ad-plea').remove();
