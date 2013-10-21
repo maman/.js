@@ -558,53 +558,6 @@
 		};
 
 		var shift = false;
-		/*
-		http://asquare.net/javascript/tests/KeyCode.html
-		http://www.quirksmode.org/js/keys.html
-		http://unixpapa.com/js/key.html
-		*/
-		var onKeyEvent = function(e) // Note: In the keydown and keyup events you will get the keycode of the letters always in uppercase instead in the keypress events you will get them in the same case the user typed them.
-		{
-			if(!e) e = window.event;
-			var eventType = e.type;
-			var keyCode = e.which || e.keyCode;
-			if(keyCode == 0) return; // Unknown key
-
-			if(eventType == "keydown")
-			{
-				if(keyCode == 16) // The shift button
-					shift = true;
-				else if( (shift && keyCode == 48) || (midori && /* Midori bug!!! */keyCode == 187 && GM_log("Midori bug!!! Bad keyCode.") == undefined) ) // Shift+0
-				{
-					if(e.preventDefault) e.preventDefault(); else e.returnValue = false;
-					gm_menu_first_time = true; // This will allow to open the elements (with the shortcuts) immediately after the menu is opened
-					show_gm_menu(true);
-				}
-				else if(gm_menu_expanded || gm_menu_first_time)
-				{
-					gm_menu_first_time = false;
-					var menu_length = gm_menu_elements.length;
-					var char_to_search = String.fromCharCode(keyCode);
-
-					for(var i = 0; i < menu_length; i++)
-						if(char_to_search == gm_menu_elements[i][2])
-						{
-							if(e.preventDefault) e.preventDefault(); else e.returnValue = false;
-							run_menu_command(i + rnd);
-							break;
-						}
-				}
-			}
-			else if(eventType == "keyup" && keyCode == 16) // The shift button
-				shift = false;
-		};
-		if(hostname != "googleads.g.doubleclick.net")
-		{
-			// Opera - Firefox - Google Chrome
-			if(addeventlistener_obj) { addeventlistener_obj("keydown", onKeyEvent, false); addeventlistener_obj("keyup", onKeyEvent, false); }
-			// Internet Explorer
-			else if(attachevent_obj) { attachevent_obj("onkeydown", onKeyEvent); attachevent_obj("onkeyup", onKeyEvent); }
-		}
 	}
 	var GlobalConfiguration = function()
 	{
