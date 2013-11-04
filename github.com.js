@@ -1,0 +1,1 @@
+$('.repository-lang-stats-graph').remove();
