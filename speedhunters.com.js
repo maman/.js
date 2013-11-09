@@ -1,2 +1,2 @@
-css = "body {background: #ddd !important} section.top-nav .branding { background: #ddd !important; padding: 0 0 20px 0 !important; }";
+css = " * { font-family: Lato !important } body {background: #ddd !important} section.top-nav { background: transparent !important } section.top-nav .branding { background: transparent !important; padding: 0 0 20px 0 !important; } .dark-grad, section.top-nav .menu-strip { background: #222; } footer.end-bloc { display: none; }";
 GM_addStyle(css);
