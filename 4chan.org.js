@@ -2,7 +2,6 @@
  Ahoka's 4Chan X
 */
 
-$('.ad-plea').remove();
 (function() {
   var $, $$, Anonymize, ArchiveLink, AutoGif, Build, CatalogLinks, Conf, Config, DeleteLink, DownloadLink, ExpandComment, ExpandThread, Favicon, FileInfo, Filter, Get, ImageExpand, ImageHover, Keybinds, Main, Menu, Nav, Options, PngFix, QR, QuoteBacklink, QuoteCT, QuoteInline, QuoteOP, QuotePreview, Quotify, Redirect, RelativeDates, ReplyHiding, ReportLink, RevealSpoilers, Sauce, StrikethroughQuotes, ThreadHiding, ThreadStats, Time, TitlePost, UI, Unread, Updater, Watcher, d, g;
 
@@ -504,7 +503,7 @@ $('.ad-plea').remove();
   Filter = {
     filters: {},
     init: function() {
-      var boards, filter, hl, key, op, regexp, stub, top, _i, _len, _ref, _ref1, _ref2, _ref3, _ref4;
+      var boards, err, filter, hl, key, op, regexp, stub, top, _i, _len, _ref, _ref1, _ref2, _ref3, _ref4;
       for (key in Config.filter) {
         this.filters[key] = [];
         _ref = Conf[key].split('\n');
@@ -526,7 +525,8 @@ $('.ad-plea').remove();
           } else {
             try {
               regexp = RegExp(regexp[1], regexp[2]);
-            } catch (err) {
+            } catch (_error) {
+              err = _error;
               alert(err.message);
               continue;
             }
@@ -1667,7 +1667,7 @@ $('.ad-plea').remove();
         thread = _ref[i];
         rect = thread.getBoundingClientRect();
         bottom = rect.bottom;
-        if (bottom > 0) {
+        if (Math.floor(bottom) > 0) {
           if (full) {
             return [thread, i, rect];
           }
@@ -1803,31 +1803,30 @@ $('.ad-plea').remove();
     },
     cooldown: {
       init: function() {
+        var key, setTimers, type, _base,
+          _this = this;
         if (!Conf['Cooldown']) {
           return;
         }
-        QR.cooldown.types = {
-          thread: (function() {
-            switch (g.BOARD) {
-              case 'q':
-                return 86400;
-              case 'b':
-              case 'soc':
-              case 'r9k':
-                return 600;
-              default:
-                return 300;
-            }
-          })(),
-          sage: g.BOARD === 'q' ? 600 : 60,
-          file: g.BOARD === 'q' ? 300 : 30,
-          post: g.BOARD === 'q' ? 60 : 30
+        setTimers = function(e) {
+          return QR.cooldown.types = e.detail;
         };
-        QR.cooldown.cooldowns = $.get("" + g.BOARD + ".cooldown", {});
+        $.on(window, 'cooldown:timers', setTimers);
+        $.globalEval('window.dispatchEvent(new CustomEvent("cooldown:timers", {detail: cooldowns}))');
+        (_base = QR.cooldown).types || (_base.types = {});
+        $.off(window, 'cooldown:timers', setTimers);
+        for (type in QR.cooldown.types) {
+          QR.cooldown.types[type] = +QR.cooldown.types[type];
+        }
+        key = "" + g.BOARD + ".cooldown";
+        QR.cooldown.cooldowns = $.get(key, {});
         QR.cooldown.start();
-        return $.sync("" + g.BOARD + ".cooldown", QR.cooldown.sync);
+        return $.sync(key, QR.cooldown.sync);
       },
       start: function() {
+        if (!Conf['Cooldown']) {
+          return;
+        }
         if (QR.cooldown.isCounting) {
           return;
         }
@@ -1842,7 +1841,7 @@ $('.ad-plea').remove();
         return QR.cooldown.start();
       },
       set: function(data) {
-        var cooldown, hasFile, isReply, isSage, start, type;
+        var cooldown, hasFile, isReply, start, threadID;
         if (!Conf['Cooldown']) {
           return;
         }
@@ -1852,15 +1851,13 @@ $('.ad-plea').remove();
             delay: data.delay
           };
         } else {
-          isSage = /sage/i.test(data.post.email);
           hasFile = !!data.post.file;
           isReply = data.isReply;
-          type = !isReply ? 'thread' : isSage ? 'sage' : hasFile ? 'file' : 'post';
+          threadID = data.threadID;
           cooldown = {
             isReply: isReply,
-            isSage: isSage,
             hasFile: hasFile,
-            timeout: start + QR.cooldown.types[type] * $.SECOND
+            threadID: threadID
           };
         }
         QR.cooldown.cooldowns[start] = cooldown;
@@ -1869,24 +1866,26 @@ $('.ad-plea').remove();
       },
       unset: function(id) {
         delete QR.cooldown.cooldowns[id];
-        return $.set("" + g.BOARD + ".cooldown", QR.cooldown.cooldowns);
+        if (Object.keys(QR.cooldown.cooldowns).length) {
+          return $.set("" + g.BOARD + ".cooldown", QR.cooldown.cooldowns);
+        } else {
+          return $["delete"]("" + g.BOARD + ".cooldown");
+        }
       },
       count: function() {
-        var cooldown, cooldowns, elapsed, hasFile, isReply, isSage, now, post, seconds, start, type, types, update, _ref;
-        if (Object.keys(QR.cooldown.cooldowns).length) {
-          setTimeout(QR.cooldown.count, 1000);
-        } else {
+        var cooldown, cooldowns, elapsed, hasFile, isReply, maxTimer, now, post, seconds, start, type, types, update, _ref;
+        if (!Object.keys(QR.cooldown.cooldowns).length) {
           $["delete"]("" + g.BOARD + ".cooldown");
           delete QR.cooldown.isCounting;
           delete QR.cooldown.seconds;
           QR.status();
           return;
         }
-        if ((isReply = g.REPLY ? true : QR.threadSelector.value !== 'new')) {
-          post = QR.replies[0];
-          isSage = /sage/i.test(post.email);
-          hasFile = !!post.file;
-        }
+        clearTimeout(QR.cooldown.timeout);
+        QR.cooldown.timeout = setTimeout(QR.cooldown.count, 1000);
+        isReply = g.REPLY ? true : QR.threadSelector.value !== 'new';
+        post = QR.replies[0];
+        hasFile = !!post.file;
         now = Date.now();
         seconds = null;
         _ref = QR.cooldown, types = _ref.types, cooldowns = _ref.cooldowns;
@@ -1902,14 +1901,29 @@ $('.ad-plea').remove();
             continue;
           }
           if (isReply === cooldown.isReply) {
-            type = !isReply ? 'thread' : isSage && cooldown.isSage ? 'sage' : hasFile && cooldown.hasFile ? 'file' : 'post';
-            elapsed = Math.floor((now - start) / 1000);
-            if (elapsed >= 0) {
-              seconds = Math.max(seconds, types[type] - elapsed);
+            elapsed = Math.floor((now - start) / $.SECOND);
+            if (elapsed < 0) {
+              continue;
             }
-          }
-          if (!((start <= now && now <= cooldown.timeout))) {
-            QR.cooldown.unset(start);
+            if (!isReply) {
+              type = 'thread';
+            } else if (hasFile) {
+              if (!cooldown.hasFile) {
+                seconds = Math.max(seconds, 0);
+                continue;
+              }
+              type = 'image';
+            } else {
+              type = 'reply';
+            }
+            maxTimer = Math.max(types[type] || 0, types[type + '_intra'] || 0);
+            if (!((start <= now && now <= +start + maxTimer * $.SECOND))) {
+              QR.cooldown.unset(start);
+            }
+            if (isReply && (g.THREAD_ID || QR.threadSelector.value) === cooldown.threadID) {
+              type += '_intra';
+            }
+            seconds = Math.max(seconds, types[type] - elapsed);
           }
         }
         update = seconds !== null || !!QR.cooldown.seconds;
@@ -2013,7 +2027,6 @@ $('.ad-plea').remove();
     },
     replies: [],
     reply: (function() {
-
       function _Class() {
         var persona, prev,
           _this = this;
@@ -2580,7 +2593,8 @@ $('.ad-plea').remove();
       }));
       QR.cooldown.set({
         post: reply,
-        isReply: threadID !== '0'
+        isReply: threadID !== '0',
+        threadID: threadID
       });
       if (threadID === '0') {
         location.pathname = "/" + g.BOARD + "/res/" + postID;
@@ -2974,14 +2988,15 @@ $('.ad-plea').remove();
       }
       reader = new FileReader();
       reader.onload = function(e) {
-        var data;
+        var data, err;
         try {
           data = JSON.parse(e.target.result);
           Options.loadSettings(data);
           if (confirm('Import successful. Refresh now?')) {
             return window.location.reload();
           }
-        } catch (err) {
+        } catch (_error) {
+          err = _error;
           return output.textContent = 'Import failed due to an error.';
         }
       };
@@ -3048,8 +3063,8 @@ $('.ad-plea').remove();
       return $.on(d, 'visibilitychange', this.cb.visibility);
     },
     /*
-      http://freesound.org/people/pierrecartoons1979/sounds/90112/
-      cc-by-nc-3.0
+    http://freesound.org/people/pierrecartoons1979/sounds/90112/
+    cc-by-nc-3.0
     */
 
     audio: $.el('audio', {
@@ -3120,9 +3135,9 @@ $('.ad-plea').remove();
           case 0:
           case 304:
             /*
-                      Status Code 304: Not modified
-                      By sending the `If-Modified-Since` header we get a proper status code, and no response.
-                      This saves bandwidth for both the user and the servers and avoid unnecessary computation.
+            Status Code 304: Not modified
+            By sending the `If-Modified-Since` header we get a proper status code, and no response.
+            This saves bandwidth for both the user and the servers and avoid unnecessary computation.
             */
 
             Updater.set('timer', -Conf['Interval']);
@@ -3604,13 +3619,13 @@ $('.ad-plea').remove();
       return Main.callbacks.push(this.node);
     },
     node: function(post) {
-      var alt, filename, node, _ref;
+      var alt, filename, node, _ref, _ref1;
       if (post.isInlined && !post.isCrosspost || !post.fileInfo) {
         return;
       }
-      node = post.fileInfo.firstElementChild;
+      node = post.fileInfo;
       alt = post.img.alt;
-      filename = ((_ref = $('span', node)) != null ? _ref.title : void 0) || node.title;
+      filename = ((_ref = $('span[title]', node)) != null ? _ref.title : void 0) || ((_ref1 = $('span', node)) != null ? _ref1.textContent : void 0) || node.title;
       FileInfo.data = {
         link: post.img.parentNode.href,
         spoiler: /^Spoiler/.test(alt),
@@ -3952,8 +3967,8 @@ $('.ad-plea').remove();
     },
     post: function(o, isArchived) {
       /*
-          This function contains code from 4chan-JS (https://github.com/4chan/4chan-JS).
-          @license: https://github.com/4chan/4chan-JS/blob/master/LICENSE
+      This function contains code from 4chan-JS (https://github.com/4chan/4chan-JS).
+      @license: https://github.com/4chan/4chan-JS/blob/master/LICENSE
       */
 
       var a, board, capcode, capcodeClass, capcodeStart, closed, comment, container, date, dateUTC, email, emailEnd, emailStart, ext, file, fileDims, fileHTML, fileInfo, fileSize, fileThumb, filename, flag, flagCode, flagName, href, imgSrc, isClosed, isOP, isSticky, name, postID, quote, shortFilename, spoilerRange, staticPath, sticky, subject, threadID, tripcode, uniqueID, userID, _i, _len, _ref;
@@ -4517,7 +4532,7 @@ $('.ad-plea').remove();
     cooldown: {
       start: function(e) {
         var seconds;
-        seconds = g.BOARD === 'q' ? 600 : 30;
+        seconds = 60;
         return DeleteLink.cooldown.count(e.detail.postID, seconds, seconds);
       },
       count: function(postID, seconds, length) {
@@ -4831,6 +4846,7 @@ $('.ad-plea').remove();
       switch (board) {
         case 'a':
         case 'gd':
+        case 'jp':
         case 'm':
         case 'q':
         case 'tg':
@@ -4892,6 +4908,7 @@ $('.ad-plea').remove();
         case 'a':
         case 'co':
         case 'gd':
+        case 'jp':
         case 'm':
         case 'q':
         case 'sp':
@@ -4947,6 +4964,7 @@ $('.ad-plea').remove();
         case 'a':
         case 'co':
         case 'gd':
+        case 'jp':
         case 'm':
         case 'q':
         case 'sp':
@@ -5263,18 +5281,18 @@ $('.ad-plea').remove();
       var rect, thumb;
       thumb = a.firstChild;
       if (thumb.hidden) {
-        rect = a.getBoundingClientRect();
+        rect = a.parentNode.parentNode.getBoundingClientRect();
         if (rect.bottom > 0) {
           if ($.engine === 'webkit') {
             if (rect.top < 0) {
-              d.body.scrollTop += rect.top - 42;
+              d.body.scrollTop += rect.top;
             }
             if (rect.left < 0) {
               d.body.scrollLeft += rect.left;
             }
           } else {
             if (rect.top < 0) {
-              d.documentElement.scrollTop += rect.top - 42;
+              d.documentElement.scrollTop += rect.top;
             }
             if (rect.left < 0) {
               d.documentElement.scrollLeft += rect.left;
@@ -5760,13 +5778,14 @@ $('.ad-plea').remove();
         imgParent = img.parentNode;
         post.img = img;
         post.fileInfo = imgParent.previousElementSibling;
+        post.fileInfo.className = "fileText";
         post.hasPdf = /\.pdf$/.test(imgParent.href);
       }
       Main.prettify(post.blockquote);
       return post;
     },
     node: function(nodes, notify) {
-      var callback, node, _i, _j, _len, _len1, _ref;
+      var callback, err, node, _i, _j, _len, _len1, _ref;
       _ref = Main.callbacks;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         callback = _ref[_i];
@@ -5775,7 +5794,8 @@ $('.ad-plea').remove();
             node = nodes[_j];
             callback(node);
           }
-        } catch (err) {
+        } catch (_error) {
+          err = _error;
           if (notify) {
             alert("4chan X (" + Main.version + ") error: " + err.message + "\nReport the bug at mayhemydg.github.io/4chan-x/#bug-report\n\nURL: " + window.location + "\n" + err.stack);
           }
@@ -5822,7 +5842,7 @@ $('.ad-plea').remove();
       return $.globalEval(("(" + code + ")()").replace('_id_', bq.id));
     },
     namespace: '4chan_x.',
-    version: '2.39.7',
+    version: '2.39.9',
     callbacks: [],
     css: '\
 /* dialog styling */\
@@ -5918,7 +5938,7 @@ h1 {\
   min-width: 300px;\
   overflow: hidden;\
   box-sizing: border-box;\
-  -webkit-box-sizing: border-box;\
+  -moz-box-sizing: border-box;\
   padding: 0 2px;\
 }\
 #qr > .move > span {\
@@ -5933,7 +5953,7 @@ h1 {\
 }\
 #dump {\
   background: -webkit-linear-gradient(#EEE, #CCC);\
-  background: -webkit-linear-gradient(#EEE, #CCC);\
+  background: -moz-linear-gradient(#EEE, #CCC);\
   background: -o-linear-gradient(#EEE, #CCC);\
   background: linear-gradient(#EEE, #CCC);\
   width: 10%;\
@@ -5943,13 +5963,13 @@ h1 {\
 }\
 #dump:hover, #dump:focus {\
   background: -webkit-linear-gradient(#FFF, #DDD);\
-  background: -webkit-linear-gradient(#FFF, #DDD);\
+  background: -moz-linear-gradient(#FFF, #DDD);\
   background: -o-linear-gradient(#FFF, #DDD);\
   background: linear-gradient(#FFF, #DDD);\
 }\
 #dump:active, .dump #dump:not(:hover):not(:focus) {\
   background: -webkit-linear-gradient(#CCC, #DDD);\
-  background: -webkit-linear-gradient(#CCC, #DDD);\
+  background: -moz-linear-gradient(#CCC, #DDD);\
   background: -o-linear-gradient(#CCC, #DDD);\
   background: linear-gradient(#CCC, #DDD);\
 }\
@@ -5961,7 +5981,7 @@ h1 {\
   height: 100px;\
   position: relative;\
   -webkit-user-select: none;\
-  -webkit-user-select: none;\
+  -moz-user-select: none;\
   -o-user-select: none;\
   user-select: none;\
 }\
@@ -5984,7 +6004,7 @@ h1 {\
   background-size: cover !important;\
   border: 1px solid #666;\
   box-sizing: border-box;\
-  -webkit-box-sizing: border-box;\
+  -moz-box-sizing: border-box;\
   cursor: move;\
   display: inline-block;\
   height: 90px; width: 90px;\
@@ -5995,7 +6015,7 @@ h1 {\
   position: relative;\
   text-shadow: 0 1px 1px #000;\
   -webkit-transition: opacity .25s ease-in-out;\
-  -webkit-transition: opacity .25s ease-in-out;\
+  -moz-transition: opacity .25s ease-in-out;\
   -o-transition: opacity .25s ease-in-out;\
   transition: opacity .25s ease-in-out;\
   vertical-align: top;\
@@ -6056,18 +6076,18 @@ h1 {\
 .field {\
   border: 1px solid #CCC;\
   box-sizing: border-box;\
-  -webkit-box-sizing: border-box;\
+  -moz-box-sizing: border-box;\
   color: #333;\
   font: 13px sans-serif;\
   margin: 0;\
   padding: 2px 4px 3px;\
   -webkit-transition: color .25s, border .25s;\
-  -webkit-transition: color .25s, border .25s;\
+  -moz-transition: color .25s, border .25s;\
   -o-transition: color .25s, border .25s;\
   transition: color .25s, border .25s;\
 }\
-.field:-webkit-placeholder,\
-.field:hover:-webkit-placeholder {\
+.field:-moz-placeholder,\
+.field:hover:-moz-placeholder {\
   color: #AAA;\
 }\
 .field:hover, .field:focus {\
@@ -6159,7 +6179,7 @@ h1 {\
 \
 body {\
   box-sizing: border-box;\
-  -webkit-box-sizing: border-box;\
+  -moz-box-sizing: border-box;\
 }\
 body.unscroll {\
   overflow: hidden;\
@@ -6181,7 +6201,7 @@ body.unscroll {\
 }\
 #options {\
   box-sizing: border-box;\
-  -webkit-box-sizing: border-box;\
+  -moz-box-sizing: border-box;\
   display: inline-block;\
   padding: 5px;\
   position: relative;\
