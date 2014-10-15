@@ -1,3 +1,9 @@
+/*
+ Uncrate for Men!
+ + Remove annoyances
+ + Remove ads
+*/
+
 $('#left>:not(div[id^=entry-], div.more)').remove();
 $('#right').remove();
 $('#left').css('width', '100%');
